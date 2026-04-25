@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Life Dashboard</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- Name Setup Modal -->
+  <div id="name-modal" class="modal-overlay">
+    <div class="modal-box">
+      <h2>Welcome! 🌿</h2>
+      <p>What should I call you?</p>
+      <input type="text" id="name-input" placeholder="Your name..." maxlength="30" />
+      <button id="name-save-btn">Get Started</button>
+    </div>
+  </div>
+
+  <div class="dashboard">
+
+    <!-- LEFT COLUMN -->
+    <div class="col col-left">
+
+      <!-- Greeting Card -->
+      <div class="card greeting-card">
+        <div class="greeting-top">
+          <div>
+            <div id="greeting-text" class="greeting-text"></div>
+            <div id="greeting-name" class="greeting-name"></div>
+          </div>
+          <button id="change-name-btn" class="icon-btn" title="Change name">✏️</button>
+        </div>
+        <div id="clock" class="clock"></div>
+        <div id="date-display" class="date-display"></div>
+      </div>
+
+      <!-- Pomodoro Card -->
+      <div class="card pomodoro-card">
+        <div class="card-header">
+          <h3>🍅 Focus Timer</h3>
+          <button id="edit-pomodoro-btn" class="icon-btn" title="Edit duration">⚙️</button>
+        </div>
+
+        <div id="pomodoro-settings" class="pomodoro-settings hidden">
+          <label>Work (min): <input type="number" id="work-input" min="1" max="60" value="25" /></label>
+          <label>Break (min): <input type="number" id="break-input" min="1" max="30" value="5" /></label>
+          <button id="save-pomodoro-btn" class="small-btn">Save</button>
+        </div>
+
+        <div class="timer-display">
+          <div id="timer-phase" class="timer-phase">Work</div>
+          <div id="timer-time" class="timer-time">25:00</div>
+          <div class="timer-ring-wrap">
+            <svg class="timer-ring" viewBox="0 0 120 120">
+              <circle class="ring-bg" cx="60" cy="60" r="52"/>
+              <circle id="ring-progress" class="ring-progress" cx="60" cy="60" r="52"/>
+            </svg>
+          </div>
+        </div>
+        <div class="timer-controls">
+          <button id="timer-start" class="btn btn-primary">▶ Start</button>
+          <button id="timer-stop" class="btn btn-secondary">⏸ Pause</button>
+          <button id="timer-reset" class="btn btn-secondary">↺ Reset</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="col col-right">
+
+      <!-- To-Do List Card -->
+      <div class="card todo-card">
+        <div class="card-header">
+          <h3>📋 Tasks</h3>
+          <select id="sort-select" class="sort-select">
+            <option value="default">Default</option>
+            <option value="az">A–Z</option>
+            <option value="done">Done last</option>
+          </select>
+        </div>
+
+        <div class="todo-input-row">
+          <input type="text" id="task-input" placeholder="Add a new task..." maxlength="80" />
+          <button id="add-task-btn" class="btn btn-primary">Add</button>
+        </div>
+        <div id="duplicate-warning" class="duplicate-warning hidden">⚠️ Task already exists!</div>
+
+        <ul id="task-list" class="task-list"></ul>
+
+        <div id="task-empty" class="task-empty">No tasks yet. Add one above ☝️</div>
+      </div>
+
+      <!-- Quick Links Card -->
+      <div class="card links-card">
+        <div class="card-header">
+          <h3>🔗 Quick Links</h3>
+          <button id="add-link-btn" class="icon-btn" title="Add link">＋</button>
+        </div>
+
+        <div id="add-link-form" class="add-link-form hidden">
+          <input type="text" id="link-name-input" placeholder="Name (e.g. YouTube)" maxlength="25" />
+          <input type="url" id="link-url-input" placeholder="URL (e.g. https://...)" />
+          <div class="link-form-btns">
+            <button id="save-link-btn" class="small-btn">Save</button>
+            <button id="cancel-link-btn" class="small-btn btn-secondary">Cancel</button>
+          </div>
+        </div>
+
+        <div id="links-container" class="links-container"></div>
+        <div id="links-empty" class="task-empty">No links yet. Add one! 🔗</div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
