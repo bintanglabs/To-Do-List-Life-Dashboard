@@ -121,11 +121,24 @@ function showAlarm(isWork) {
   $('alarm-icon').textContent = isWork ? '🍅' : '☕';
   $('alarm-msg').textContent  = isWork ? 'Work time! Let\'s focus! 💪' : 'Break time! Rest a bit 😌';
   toast.classList.remove('hidden');
-  setTimeout(() => toast.classList.add('hidden'), 6000);
+
+  // Bunyikan alarm berulang setiap 10 detik sampai ditutup manual
+  const alarmInterval = setInterval(() => {
+    if (!toast.classList.contains('hidden')) {
+      playAlarm();
+    } else {
+      clearInterval(alarmInterval);
+    }
+  }, 10000);
+
+  // Simpan interval agar bisa dihentikan saat tombol ✕ ditekan
+  toast.dataset.intervalId = alarmInterval;
 }
 
 $('alarm-close').addEventListener('click', () => {
-  $('alarm-toast').classList.add('hidden');
+  const toast = $('alarm-toast');
+  toast.classList.add('hidden');
+  clearInterval(parseInt(toast.dataset.intervalId));
 });
 
 // ───────────── POMODORO (Challenge 2 — Changeable + Alarm) ─────────────
