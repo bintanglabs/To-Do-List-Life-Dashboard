@@ -1,9 +1,8 @@
 // ============================================================
-//  LIFE DASHBOARD — app.js
-//  Challenges: Custom Name Greeting | Pomodoro Time | No Duplicates
+//  LIFE DASHBOARD v2 — app.js
+//  + Theme Switcher | + Alarm | + Updated Quick Links
 // ============================================================
 
-// ───────────── HELPERS ─────────────
 const $ = (id) => document.getElementById(id);
 const ls = {
   get: (key, fallback = null) => {
@@ -11,6 +10,28 @@ const ls = {
   },
   set: (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
 };
+
+// ───────────── THEME ─────────────
+const THEMES = ['tiramisu', 'monokrom', 'green-forest', 'blue-ocean'];
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  ls.set('theme', theme);
+  // update active button in modal if open
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.theme === theme);
+  });
+}
+
+// Theme buttons in modal
+document.querySelectorAll('.theme-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    applyTheme(btn.dataset.theme);
+  });
+});
+
+// Load saved theme
+applyTheme(ls.get('theme', 'tiramisu'));
 
 // ───────────── CLOCK & DATE ─────────────
 function updateClock() {
@@ -25,17 +46,16 @@ function updateClock() {
   $('date-display').textContent = `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
 
   const hour = now.getHours();
-  let greet = '';
-  if (hour >= 5 && hour < 12) greet = '☀️ Good Morning';
-  else if (hour >= 12 && hour < 17) greet = '🌤 Good Afternoon';
-  else if (hour >= 17 && hour < 21) greet = '🌇 Good Evening';
-  else greet = '🌙 Good Night';
+  let greet = hour >= 5 && hour < 12 ? '☀️ Good Morning'
+            : hour >= 12 && hour < 17 ? '🌤 Good Afternoon'
+            : hour >= 17 && hour < 21 ? '🌇 Good Evening'
+            : '🌙 Good Night';
   $('greeting-text').textContent = greet;
 }
 setInterval(updateClock, 1000);
 updateClock();
 
-// ───────────── CUSTOM NAME GREETING (Challenge 1) ─────────────
+// ───────────── CUSTOM NAME (Challenge 1) ─────────────
 function loadName() {
   const name = ls.get('userName');
   if (!name) {
@@ -48,7 +68,7 @@ function loadName() {
 
 $('name-save-btn').addEventListener('click', () => {
   const val = $('name-input').value.trim();
-  if (!val) return;
+  if (!val) { $('name-input').focus(); return; }
   ls.set('userName', val);
   $('greeting-name').textContent = val;
   $('name-modal').classList.add('hidden');
@@ -60,92 +80,130 @@ $('name-input').addEventListener('keydown', (e) => {
 
 $('change-name-btn').addEventListener('click', () => {
   $('name-input').value = ls.get('userName') || '';
+  // sync theme buttons
+  const current = ls.get('theme', 'tiramisu');
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.theme === current);
+  });
   $('name-modal').classList.remove('hidden');
   setTimeout(() => $('name-input').focus(), 100);
 });
 
 loadName();
 
-// ───────────── POMODORO TIMER (Challenge 2 — Changeable duration) ─────────────
-const CIRC = 2 * Math.PI * 52; // ring circumference
-let pomodoroState = {
-  workMin: ls.get('pomoWork', 25),
+// ───────────── ALARM ─────────────
+let alarmAudio = null;
+
+function playAlarm() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const beep = (freq, start, dur) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.4, ctx.currentTime + start);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + dur);
+    };
+    beep(880, 0,    0.15);
+    beep(880, 0.2,  0.15);
+    beep(1100, 0.4, 0.25);
+  } catch(e) {}
+}
+
+function showAlarm(isWork) {
+  playAlarm();
+  const toast = $('alarm-toast');
+  $('alarm-icon').textContent = isWork ? '🍅' : '☕';
+  $('alarm-msg').textContent  = isWork ? 'Work time! Let\'s focus! 💪' : 'Break time! Rest a bit 😌';
+  toast.classList.remove('hidden');
+  setTimeout(() => toast.classList.add('hidden'), 6000);
+}
+
+$('alarm-close').addEventListener('click', () => {
+  $('alarm-toast').classList.add('hidden');
+});
+
+// ───────────── POMODORO (Challenge 2 — Changeable + Alarm) ─────────────
+const CIRC = 2 * Math.PI * 52;
+let pomo = {
+  workMin:  ls.get('pomoWork', 25),
   breakMin: ls.get('pomoBreak', 5),
-  isWork: true,
+  isWork:   true,
   totalSec: 0,
-  remSec: 0,
-  running: false,
+  remSec:   0,
+  running:  false,
   interval: null,
 };
 
 function initPomodoro() {
-  pomodoroState.remSec = pomodoroState.workMin * 60;
-  pomodoroState.totalSec = pomodoroState.workMin * 60;
-  pomodoroState.isWork = true;
+  pomo.remSec    = pomo.workMin * 60;
+  pomo.totalSec  = pomo.workMin * 60;
+  pomo.isWork    = true;
   renderTimer();
 }
 
 function renderTimer() {
-  const m = Math.floor(pomodoroState.remSec / 60);
-  const s = pomodoroState.remSec % 60;
-  $('timer-time').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-  $('timer-phase').textContent = pomodoroState.isWork ? 'Work' : 'Break';
+  const m = Math.floor(pomo.remSec / 60);
+  const s = pomo.remSec % 60;
+  $('timer-time').textContent  = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  $('timer-phase').textContent = pomo.isWork ? 'Work' : 'Break';
 
-  const ratio = pomodoroState.remSec / pomodoroState.totalSec;
+  const ratio  = pomo.remSec / pomo.totalSec;
   const offset = CIRC * (1 - ratio);
   $('ring-progress').style.strokeDashoffset = offset;
-  $('ring-progress').style.stroke = pomodoroState.isWork ? 'var(--accent)' : 'var(--brown-light)';
 }
 
 function timerTick() {
-  pomodoroState.remSec--;
-  if (pomodoroState.remSec < 0) {
-    pomodoroState.isWork = !pomodoroState.isWork;
-    const nextMin = pomodoroState.isWork ? pomodoroState.workMin : pomodoroState.breakMin;
-    pomodoroState.remSec = nextMin * 60;
-    pomodoroState.totalSec = nextMin * 60;
-    // Notification
-    if (Notification.permission === 'granted') {
-      new Notification(pomodoroState.isWork ? '🍅 Back to Work!' : '☕ Break Time!');
-    }
+  pomo.remSec--;
+  if (pomo.remSec < 0) {
+    // Switch phase
+    pomo.isWork = !pomo.isWork;
+    const nextMin = pomo.isWork ? pomo.workMin : pomo.breakMin;
+    pomo.remSec   = nextMin * 60;
+    pomo.totalSec = nextMin * 60;
+    showAlarm(pomo.isWork);
   }
   renderTimer();
 }
 
 $('timer-start').addEventListener('click', () => {
-  if (pomodoroState.running) return;
-  pomodoroState.running = true;
-  pomodoroState.interval = setInterval(timerTick, 1000);
-  if (Notification.permission === 'default') Notification.requestPermission();
+  if (pomo.running) return;
+  pomo.running  = true;
+  pomo.interval = setInterval(timerTick, 1000);
 });
 
 $('timer-stop').addEventListener('click', () => {
-  pomodoroState.running = false;
-  clearInterval(pomodoroState.interval);
+  pomo.running = false;
+  clearInterval(pomo.interval);
 });
 
 $('timer-reset').addEventListener('click', () => {
-  pomodoroState.running = false;
-  clearInterval(pomodoroState.interval);
+  pomo.running = false;
+  clearInterval(pomo.interval);
   initPomodoro();
 });
 
 $('edit-pomodoro-btn').addEventListener('click', () => {
   $('pomodoro-settings').classList.toggle('hidden');
-  $('work-input').value = pomodoroState.workMin;
-  $('break-input').value = pomodoroState.breakMin;
+  $('work-input').value  = pomo.workMin;
+  $('break-input').value = pomo.breakMin;
 });
 
 $('save-pomodoro-btn').addEventListener('click', () => {
   const w = parseInt($('work-input').value, 10);
   const b = parseInt($('break-input').value, 10);
   if (isNaN(w) || isNaN(b) || w < 1 || b < 1) return;
-  pomodoroState.workMin = w;
-  pomodoroState.breakMin = b;
+  pomo.workMin  = w;
+  pomo.breakMin = b;
   ls.set('pomoWork', w);
   ls.set('pomoBreak', b);
-  pomodoroState.running = false;
-  clearInterval(pomodoroState.interval);
+  pomo.running = false;
+  clearInterval(pomo.interval);
   initPomodoro();
   $('pomodoro-settings').classList.add('hidden');
 });
@@ -153,7 +211,7 @@ $('save-pomodoro-btn').addEventListener('click', () => {
 initPomodoro();
 
 // ───────────── TO-DO LIST (Challenge 3 — No Duplicates) ─────────────
-let tasks = ls.get('tasks', []);
+let tasks    = ls.get('tasks', []);
 let editingId = null;
 
 function saveTasks() { ls.set('tasks', tasks); }
@@ -162,35 +220,29 @@ function getDisplayTasks() {
   const sort = $('sort-select').value;
   const copy = [...tasks];
   if (sort === 'az') copy.sort((a, b) => a.text.localeCompare(b.text));
-  else if (sort === 'done') copy.sort((a, b) => (a.done === b.done ? 0 : a.done ? 1 : -1));
+  else if (sort === 'done') copy.sort((a, b) => a.done === b.done ? 0 : a.done ? 1 : -1);
   return copy;
 }
 
 function renderTasks() {
-  const list = $('task-list');
+  const list  = $('task-list');
   const empty = $('task-empty');
   list.innerHTML = '';
 
   const displayed = getDisplayTasks();
-  if (displayed.length === 0) {
-    empty.classList.remove('hidden');
-    return;
-  }
-  empty.classList.add('hidden');
+  empty.classList.toggle('hidden', displayed.length > 0);
 
   displayed.forEach((task) => {
     const li = document.createElement('li');
     li.className = `task-item${task.done ? ' done' : ''}`;
     li.dataset.id = task.id;
 
-    // Checkbox
     const cb = document.createElement('div');
     cb.className = 'task-checkbox';
     cb.innerHTML = task.done ? '✓' : '';
     cb.title = 'Mark done';
     cb.addEventListener('click', () => toggleDone(task.id));
 
-    // Text or edit input
     if (editingId === task.id) {
       const inp = document.createElement('input');
       inp.className = 'task-edit-input';
@@ -211,7 +263,6 @@ function renderTasks() {
       li.appendChild(span);
     }
 
-    // Actions
     const actions = document.createElement('div');
     actions.className = 'task-actions';
 
@@ -236,10 +287,9 @@ function renderTasks() {
 
 function addTask() {
   const input = $('task-input');
-  const text = input.value.trim();
+  const text  = input.value.trim();
   if (!text) return;
 
-  // CHALLENGE: Prevent duplicate tasks (case-insensitive)
   const isDuplicate = tasks.some(t => t.text.toLowerCase() === text.toLowerCase());
   if (isDuplicate) {
     const warn = $('duplicate-warning');
@@ -257,15 +307,13 @@ function addTask() {
 
 function toggleDone(id) {
   tasks = tasks.map(t => t.id === id ? { ...t, done: !t.done } : t);
-  saveTasks();
-  renderTasks();
+  saveTasks(); renderTasks();
 }
 
 function saveEdit(id, newText) {
   const text = newText.trim();
   if (!text) { editingId = null; renderTasks(); return; }
 
-  // Prevent duplicate on edit
   const isDuplicate = tasks.some(t => t.id !== id && t.text.toLowerCase() === text.toLowerCase());
   if (isDuplicate) {
     editingId = null;
@@ -277,46 +325,42 @@ function saveEdit(id, newText) {
   }
 
   tasks = tasks.map(t => t.id === id ? { ...t, text } : t);
-  saveTasks();
-  editingId = null;
-  renderTasks();
+  saveTasks(); editingId = null; renderTasks();
 }
 
 function deleteTask(id) {
   tasks = tasks.filter(t => t.id !== id);
-  saveTasks();
-  renderTasks();
+  saveTasks(); renderTasks();
 }
 
 $('add-task-btn').addEventListener('click', addTask);
 $('task-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') addTask(); });
 $('sort-select').addEventListener('change', renderTasks);
-
 renderTasks();
 
 // ───────────── QUICK LINKS ─────────────
 let links = ls.get('quickLinks', [
-  { id: 1, name: 'Google', url: 'https://google.com' },
-  { id: 2, name: 'YouTube', url: 'https://youtube.com' },
-  { id: 3, name: 'GitHub', url: 'https://github.com' },
+  { id: 1, name: 'YouTube',       url: 'https://youtube.com' },
+  { id: 2, name: 'Spotify',       url: 'https://open.spotify.com' },
+  { id: 3, name: 'Google Scholar',url: 'https://scholar.google.com' },
+  { id: 4, name: 'ChatGPT',       url: 'https://chat.openai.com' },
 ]);
 
 function saveLinks() { ls.set('quickLinks', links); }
 
 function renderLinks() {
   const container = $('links-container');
-  const empty = $('links-empty');
+  const empty     = $('links-empty');
   container.innerHTML = '';
 
-  if (links.length === 0) { empty.classList.remove('hidden'); return; }
-  empty.classList.add('hidden');
+  empty.classList.toggle('hidden', links.length > 0);
 
   links.forEach((link) => {
     const chip = document.createElement('a');
     chip.className = 'link-chip';
-    chip.href = link.url;
-    chip.target = '_blank';
-    chip.rel = 'noopener noreferrer';
+    chip.href      = link.url;
+    chip.target    = '_blank';
+    chip.rel       = 'noopener noreferrer';
 
     const favicon = `https://www.google.com/s2/favicons?sz=16&domain=${encodeURIComponent(link.url)}`;
     chip.innerHTML = `<img src="${favicon}" width="16" height="16" alt="" onerror="this.style.display='none'"> ${link.name} <button class="link-delete-btn" title="Remove">✕</button>`;
@@ -324,8 +368,7 @@ function renderLinks() {
     chip.querySelector('.link-delete-btn').addEventListener('click', (e) => {
       e.preventDefault();
       links = links.filter(l => l.id !== link.id);
-      saveLinks();
-      renderLinks();
+      saveLinks(); renderLinks();
     });
 
     container.appendChild(chip);
@@ -334,28 +377,25 @@ function renderLinks() {
 
 $('add-link-btn').addEventListener('click', () => {
   $('add-link-form').classList.toggle('hidden');
-  if (!$('add-link-form').classList.contains('hidden')) {
-    $('link-name-input').focus();
-  }
+  if (!$('add-link-form').classList.contains('hidden')) $('link-name-input').focus();
 });
 
 $('cancel-link-btn').addEventListener('click', () => {
   $('add-link-form').classList.add('hidden');
   $('link-name-input').value = '';
-  $('link-url-input').value = '';
+  $('link-url-input').value  = '';
 });
 
 $('save-link-btn').addEventListener('click', () => {
   const name = $('link-name-input').value.trim();
-  let url = $('link-url-input').value.trim();
+  let   url  = $('link-url-input').value.trim();
   if (!name || !url) return;
   if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
   links.push({ id: Date.now(), name, url });
-  saveLinks();
-  renderLinks();
+  saveLinks(); renderLinks();
   $('add-link-form').classList.add('hidden');
   $('link-name-input').value = '';
-  $('link-url-input').value = '';
+  $('link-url-input').value  = '';
 });
 
 renderLinks();

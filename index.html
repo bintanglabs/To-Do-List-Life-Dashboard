@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="tiramisu">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,13 +9,34 @@
 </head>
 <body>
 
-  <!-- Name Setup Modal -->
+  <!-- Welcome Modal: Name + Theme -->
   <div id="name-modal" class="modal-overlay">
     <div class="modal-box">
       <h2>Welcome! 🌿</h2>
       <p>What should I call you?</p>
       <input type="text" id="name-input" placeholder="Your name..." maxlength="30" />
-      <button id="name-save-btn">Get Started</button>
+
+      <p class="theme-label">Choose your theme:</p>
+      <div class="theme-options">
+        <button class="theme-btn active" data-theme="tiramisu">
+          <span class="theme-swatch tiramisu-swatch"></span>
+          Tiramisu
+        </button>
+        <button class="theme-btn" data-theme="monokrom">
+          <span class="theme-swatch monokrom-swatch"></span>
+          Monokrom
+        </button>
+        <button class="theme-btn" data-theme="green-forest">
+          <span class="theme-swatch green-forest-swatch"></span>
+          Green Forest
+        </button>
+        <button class="theme-btn" data-theme="blue-ocean">
+          <span class="theme-swatch blue-ocean-swatch"></span>
+          Blue Ocean
+        </button>
+      </div>
+
+      <button id="name-save-btn">Get Started →</button>
     </div>
   </div>
 
@@ -31,7 +52,9 @@
             <div id="greeting-text" class="greeting-text"></div>
             <div id="greeting-name" class="greeting-name"></div>
           </div>
-          <button id="change-name-btn" class="icon-btn" title="Change name">✏️</button>
+          <div class="greeting-actions">
+            <button id="change-name-btn" class="icon-btn" title="Change name & theme">✏️</button>
+          </div>
         </div>
         <div id="clock" class="clock"></div>
         <div id="date-display" class="date-display"></div>
@@ -52,12 +75,12 @@
 
         <div class="timer-display">
           <div id="timer-phase" class="timer-phase">Work</div>
-          <div id="timer-time" class="timer-time">25:00</div>
           <div class="timer-ring-wrap">
             <svg class="timer-ring" viewBox="0 0 120 120">
               <circle class="ring-bg" cx="60" cy="60" r="52"/>
               <circle id="ring-progress" class="ring-progress" cx="60" cy="60" r="52"/>
             </svg>
+            <div id="timer-time" class="timer-time">25:00</div>
           </div>
         </div>
         <div class="timer-controls">
@@ -90,7 +113,6 @@
         <div id="duplicate-warning" class="duplicate-warning hidden">⚠️ Task already exists!</div>
 
         <ul id="task-list" class="task-list"></ul>
-
         <div id="task-empty" class="task-empty">No tasks yet. Add one above ☝️</div>
       </div>
 
@@ -115,6 +137,13 @@
       </div>
 
     </div>
+  </div>
+
+  <!-- Alarm Toast -->
+  <div id="alarm-toast" class="alarm-toast hidden">
+    <span id="alarm-icon">🍅</span>
+    <span id="alarm-msg">Time's up!</span>
+    <button id="alarm-close">✕</button>
   </div>
 
   <script src="js/app.js"></script>
